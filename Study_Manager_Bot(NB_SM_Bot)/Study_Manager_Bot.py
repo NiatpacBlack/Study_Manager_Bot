@@ -62,11 +62,21 @@ def date_translation(unix_date: int):
     return datetime.fromtimestamp(unix_date).strftime("%H:%M:%S %Y-%m-%d")
 
 
-def time_translation(unix_date: int):
-    return datetime.utcfromtimestamp(unix_date).strftime("%H:%M:%S")
+def sec_to_hours(seconds: int):
+    hours = str(seconds // 3600)
+    if len(hours) == 1:
+        hours = '0' + hours
+    minutes = str((seconds % 3600) // 60)
+    if len(minutes) == 1:
+        minutes = '0' + minutes
+    seconds = str((seconds % 3600) % 60)
+    if len(seconds) == 1:
+        seconds = '0' + seconds
+
+    return f"{hours}:{minutes}:{seconds}"
 
 
-def unix_translation(normal_date: str):
+def unix_conversion(normal_date: str):
     unix_date = int((datetime.strptime(f'{normal_date}', '%H:%M:%S %Y-%m-%d')).timestamp())
     return unix_date
 
@@ -102,8 +112,8 @@ def add_time_bot(message):
     list_message_words = message.text.split()
     try:
         if list_message_words.index('start:') == 1 and list_message_words.index('stop:') == 4:
-            start_time_unix = unix_translation(' '.join(list_message_words[2:4]))
-            end_time_unix = unix_translation(' '.join(list_message_words[5:]))
+            start_time_unix = unix_conversion(' '.join(list_message_words[2:4]))
+            end_time_unix = unix_conversion(' '.join(list_message_words[5:]))
             db.insert('start_end_table',
                       chat_id=str(message.chat.id),
                       start_time=str(start_time_unix),
@@ -154,27 +164,29 @@ def callback_inline(callback):
 
             if callback.data == 'report_1':
                 total_time_today = db.report_today(str(callback.message.chat.id))
+                print(total_time_today)
                 bot.send_message(
                     chat_id=callback.message.chat.id,
-                    text=f'За сегодня вы занимались {time_translation(total_time_today)}'
+                    text=f'За сегодня вы занимались {sec_to_hours(total_time_today)}'
                 )
             if callback.data == 'report_2':
                 total_time_week = db.report_week(str(callback.message.chat.id))
+                print(total_time_week)
                 bot.send_message(
                     chat_id=callback.message.chat.id,
-                    text=f'За эту неделю вы занимались {time_translation(total_time_week)}'
+                    text=f'За эту неделю вы занимались {sec_to_hours(total_time_week)}'
                 )
             if callback.data == 'report_3':
                 total_time_month = db.report_month(str(callback.message.chat.id))
                 bot.send_message(
                     chat_id=callback.message.chat.id,
-                    text=f'За этот месяц вы занимались {time_translation(total_time_month)}'
+                    text=f'За этот месяц вы занимались {sec_to_hours(total_time_month)}'
                 )
             if callback.data == 'report_4':
                 total_time = db.report_all_time(str(callback.message.chat.id))
                 bot.send_message(
                     chat_id=callback.message.chat.id,
-                    text=f'За все время вы занимались {time_translation(total_time)}'
+                    text=f'За все время вы занимались {sec_to_hours(total_time)}'
                 )
         except TypeError:
             bot.send_message(
@@ -240,7 +252,7 @@ def callback_inline(callback):
             bot.send_message(
                 chat_id=callback.message.chat.id,
                 text=f'Учеба закончена в {date_translation(int(time.time()))}\n'
-                     f'Время учебы {time_translation(total_work_time)}',
+                     f'Время учебы {sec_to_hours(total_work_time)}',
             )
     except:
         bot.send_message(

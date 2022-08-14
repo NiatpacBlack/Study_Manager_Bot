@@ -80,7 +80,7 @@ def report_today(chat_id: str):
     cursor.execute(f'''
             SELECT SUM(total_work_time)
             FROM total_time_table
-                INNER JOIN union_table USING(chat_id, session_id)
+                INNER JOIN start_end_table USING(chat_id, session_id)
             WHERE chat_id = {chat_id} AND start_time > {day_now_unix} AND start_time < {day_next_unix};      
             ''')
     read_table = cursor.fetchall()
@@ -102,8 +102,8 @@ def report_week(chat_id: str):
 
     cursor.execute(f'''
             SELECT SUM(total_work_time)
-            FROM union_table
-                LEFT JOIN total_time_table USING(chat_id, session_id)
+            FROM total_time_table
+                INNER JOIN start_end_table USING(chat_id, session_id)
             WHERE chat_id = {chat_id} AND start_time > {start_week_unix} AND start_time < {end_week_unix};      
             ''')
     read_table = cursor.fetchall()
@@ -127,8 +127,8 @@ def report_month(chat_id: str):
 
     cursor.execute(f'''
                 SELECT SUM(total_work_time)
-                FROM total_time_table
-                    INNER JOIN union_table USING(chat_id, session_id)
+                    FROM total_time_table
+                INNER JOIN start_end_table USING(chat_id, session_id)
                 WHERE chat_id = {chat_id} AND start_time > {start_month_unix} AND start_time < {end_month_unix};      
                 ''')
     read_table = cursor.fetchall()
@@ -141,8 +141,8 @@ def report_all_time(chat_id: str):
     cursor = study_time_db.cursor()
     cursor.execute(f'''
             SELECT SUM(total_work_time)
-            FROM union_table
-                LEFT JOIN total_time_table USING(chat_id, session_id)
+            FROM total_time_table
+                INNER JOIN start_end_table USING(chat_id, session_id)
             WHERE chat_id = {chat_id};      
             ''')
     read_table = cursor.fetchall()
