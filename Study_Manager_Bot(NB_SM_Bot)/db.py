@@ -101,7 +101,7 @@ def report_week(chat_id: str):
     now_weekday = datetime.now().date().weekday()
     day_now_unix = int((datetime.strptime(f'{datetime.now().date()}', '%Y-%m-%d')).timestamp())
 
-    for day in range(1, 8):
+    for day in range(8):
         if now_weekday == day:
             start_week_unix = day_now_unix - (86400 * day)
             end_week_unix = start_week_unix + (86400 * 7)
