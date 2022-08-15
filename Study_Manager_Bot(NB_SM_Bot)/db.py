@@ -92,19 +92,28 @@ def report_today(chat_id: str):
     return int(read_table[0][0])
 
 
-def report_week(chat_id: str):
-    """ Отчет об общем времени в текущей неделе """
+def report_week(chat_id: str, week='now'):
+    """ Отчет об общем времени в текущей неделе и прошлой"""
 
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
 
+    seconds_per_day = 86400
+    seconds_per_week = seconds_per_day * 7
+
     now_weekday = datetime.now().date().weekday()
     day_now_unix = int((datetime.strptime(f'{datetime.now().date()}', '%Y-%m-%d')).timestamp())
 
+
     for day in range(8):
         if now_weekday == day:
-            start_week_unix = day_now_unix - (86400 * day)
-            end_week_unix = start_week_unix + (86400 * 7)
+            if week == "now":
+                start_week_unix = day_now_unix - (seconds_per_day * day)
+                end_week_unix = start_week_unix + seconds_per_week
+            elif week == 'last':
+                end_week_unix = day_now_unix - (seconds_per_day * day)
+                start_week_unix = end_week_unix - seconds_per_week
+
 
     cursor.execute(f'''
             SELECT SUM(total_work_time)
@@ -114,6 +123,8 @@ def report_week(chat_id: str):
             ''')
     read_table = cursor.fetchall()
     return int(read_table[0][0])
+
+
 
 
 def report_month(chat_id: str):

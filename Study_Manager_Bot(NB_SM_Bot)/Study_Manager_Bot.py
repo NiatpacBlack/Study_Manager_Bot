@@ -62,10 +62,12 @@ def create_reports_keyboard():
     report_2_btn = types.InlineKeyboardButton(text="Отчет за текущую неделю", callback_data='report_2')
     report_3_btn = types.InlineKeyboardButton(text="Отчет за текущий месяц", callback_data='report_3')
     report_4_btn = types.InlineKeyboardButton(text="Отчет за все время", callback_data='report_4')
+    report_5_btn = types.InlineKeyboardButton(text="Отчет за прошлую неделю", callback_data='report_5')
     reports_keyboard.add(report_1_btn)
     reports_keyboard.add(report_2_btn)
     reports_keyboard.add(report_3_btn)
     reports_keyboard.add(report_4_btn)
+    reports_keyboard.add(report_5_btn)
     return reports_keyboard
 
 
@@ -226,6 +228,13 @@ def callback_inline(callback):
                 bot.send_message(
                     chat_id=callback.message.chat.id,
                     text=f'За все время вы занимались {sec_to_hours_conv(total_time)}'
+                )
+
+            if callback.data == 'report_5':
+                total_time_last_week = db.report_week(str(callback.message.chat.id), week='last')
+                bot.send_message(
+                    chat_id=callback.message.chat.id,
+                    text=f'За прошлую неделю вы занимались {sec_to_hours_conv(total_time_last_week)}'
                 )
         except TypeError:
             bot.send_message(
