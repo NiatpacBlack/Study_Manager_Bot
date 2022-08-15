@@ -12,13 +12,18 @@ from datetime import datetime
 app = Flask(__name__)
 bot = telebot.TeleBot(config.token)
 
+""" В эту переменную будет заноситься номер текущей session_id из базы данных """
 id_session = 0
+
+""" В эту переменную будет заноситься последнее отправленное сообщение с кнопками """
 last_message = ''
 
 db.create_all_table()
 
 
 def create_start_keyboard():
+    """ Создает кнопки выпадающие при старте бота """
+
     start_keyboard = types.InlineKeyboardMarkup()
     begin_btn = types.InlineKeyboardButton(text="Начать учебу", callback_data='begin')
     report_btn = types.InlineKeyboardButton(text="Посмотреть отчет по учебе", callback_data='reports')
@@ -28,6 +33,8 @@ def create_start_keyboard():
 
 
 def create_mid_keyboard():
+    """ Создает кнопки выпадающие при начале учебы """
+
     start_mid_keyboard = types.InlineKeyboardMarkup()
     pause_btn = types.InlineKeyboardButton(text="Приостановить учебу", callback_data='pause')
     end_btn = types.InlineKeyboardButton(text="Закончить учебу", callback_data='end')
@@ -37,6 +44,8 @@ def create_mid_keyboard():
 
 
 def create_pause_keyboard():
+    """ Создает кнопки выпадающие при постановке на паузу """
+
     start_pause_keyboard = types.InlineKeyboardMarkup()
     unpause_btn = types.InlineKeyboardButton(text="Возобновить учебу", callback_data='unpause')
     end_btn = types.InlineKeyboardButton(text="Закончить учебу", callback_data='end')
@@ -46,6 +55,8 @@ def create_pause_keyboard():
 
 
 def create_reports_keyboard():
+    """ Создает кнопки выпадающие при переходе к отчетам """
+
     reports_keyboard = types.InlineKeyboardMarkup()
     report_1_btn = types.InlineKeyboardButton(text="Отчет за текущий день", callback_data='report_1')
     report_2_btn = types.InlineKeyboardButton(text="Отчет за текущую неделю", callback_data='report_2')
@@ -58,11 +69,23 @@ def create_reports_keyboard():
     return reports_keyboard
 
 
-def date_translation(unix_date: int):
-    return datetime.fromtimestamp(unix_date).strftime("%H:%M:%S %Y-%m-%d")
+def unix_to_date_conv(unix_date: int):
+    """ Конвертирует unix формат в читаемую дату """
+
+    normal_date = datetime.fromtimestamp(unix_date).strftime("%H:%M:%S %Y-%m-%d")
+    return normal_date
 
 
-def sec_to_hours(seconds: int):
+def date_to_unix_conv(normal_date: str):
+    """ Конвертирует строку с читаемой датой в unix формат """
+
+    unix_date = int((datetime.strptime(f'{normal_date}', '%H:%M:%S %Y-%m-%d')).timestamp())
+    return unix_date
+
+
+def sec_to_hours_conv(seconds: int):
+    """ Конвертирует секунды в часы, минуты, секунды """
+
     hours = str(seconds // 3600)
     if len(hours) == 1:
         hours = '0' + hours
@@ -72,17 +95,13 @@ def sec_to_hours(seconds: int):
     seconds = str((seconds % 3600) % 60)
     if len(seconds) == 1:
         seconds = '0' + seconds
-
     return f"{hours}:{minutes}:{seconds}"
-
-
-def unix_conversion(normal_date: str):
-    unix_date = int((datetime.strptime(f'{normal_date}', '%H:%M:%S %Y-%m-%d')).timestamp())
-    return unix_date
 
 
 @app.route('/', methods=['POST', 'GET'])
 def index():
+    """ Обработка полученных веб-хуков """
+
     if request.headers.get('content-type') == 'application/json':
         update = telebot.types.Update.de_json(request.stream.read().decode('utf-8'))
         bot.process_new_updates([update])
@@ -97,6 +116,8 @@ def index():
 
 @bot.message_handler(commands=['start'])
 def start_bot(message):
+    """ Отрисовка стартовой клавиатуры и стартового сообщения """
+
     global last_message
     start_keyboard = create_start_keyboard()
     last_message = bot.send_message(
@@ -109,23 +130,34 @@ def start_bot(message):
 
 @bot.message_handler(commands=['add_time'])
 def add_time_bot(message):
+    """ Добавление введенных даты и времени в таблицу start_end_table и общего времени в таблицу total_time_table """
+
     list_message_words = message.text.split()
     try:
+        """ Проверка на соответствие шаблону ввода даты """
         if list_message_words.index('start:') == 1 and list_message_words.index('stop:') == 4:
-            start_time_unix = unix_conversion(' '.join(list_message_words[2:4]))
-            end_time_unix = unix_conversion(' '.join(list_message_words[5:]))
+            start_time_unix = date_to_unix_conv(' '.join(list_message_words[2:4]))
+            end_time_unix = date_to_unix_conv(' '.join(list_message_words[5:]))
+
+            """ Добавление времени начала и конца учебы в таблицу """
             db.insert('start_end_table',
                       chat_id=str(message.chat.id),
                       start_time=str(start_time_unix),
                       end_time=str(end_time_unix))
-            id_session = db.get_session_id(message.chat.id, start_time_unix)
+
+            """ Перезагрузка таблицы union_table, для вычисления общего времени """
+            session_id = db.get_session_id(message.chat.id, start_time_unix)
             db.delete_table('union_table')
             db.reinsert_union_table()
-            total_work_time = db.get_total_work_time(id_session)
+            total_work_time = db.get_total_work_time(session_id)
+
+            """ Добавление общего времени учебы в таблицу """
             db.insert('total_time_table',
-                      session_id=str(id_session),
+                      session_id=str(session_id),
                       chat_id=str(message.chat.id),
                       total_work_time=str(total_work_time))
+
+            """ Ответ пользователю об успехе """
             bot.send_message(
                 message.chat.id,
                 answers.success_answer(),
@@ -142,6 +174,8 @@ def add_time_bot(message):
 
 @bot.message_handler(commands=['help'])
 def help_bot(message):
+    """ Отправка сообщения с информацией о командах бота пользователю """
+
     bot.send_message(
         message.chat.id,
         answers.help_answer(),
@@ -151,8 +185,12 @@ def help_bot(message):
 
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_inline(callback):
+    """ Обработка всех полученных callback команд """
+
     global id_session, last_message
     try:
+
+        """ Обработка нажатия отчетных кнопок """
         try:
             if callback.data == 'reports':
                 bot.delete_message(callback.message.chat.id, last_message.id)
@@ -164,29 +202,30 @@ def callback_inline(callback):
 
             if callback.data == 'report_1':
                 total_time_today = db.report_today(str(callback.message.chat.id))
-                print(total_time_today)
                 bot.send_message(
                     chat_id=callback.message.chat.id,
-                    text=f'За сегодня вы занимались {sec_to_hours(total_time_today)}'
+                    text=f'За сегодня вы занимались {sec_to_hours_conv(total_time_today)}'
                 )
+
             if callback.data == 'report_2':
                 total_time_week = db.report_week(str(callback.message.chat.id))
-                print(total_time_week)
                 bot.send_message(
                     chat_id=callback.message.chat.id,
-                    text=f'За эту неделю вы занимались {sec_to_hours(total_time_week)}'
+                    text=f'За эту неделю вы занимались {sec_to_hours_conv(total_time_week)}'
                 )
+
             if callback.data == 'report_3':
                 total_time_month = db.report_month(str(callback.message.chat.id))
                 bot.send_message(
                     chat_id=callback.message.chat.id,
-                    text=f'За этот месяц вы занимались {sec_to_hours(total_time_month)}'
+                    text=f'За этот месяц вы занимались {sec_to_hours_conv(total_time_month)}'
                 )
+
             if callback.data == 'report_4':
                 total_time = db.report_all_time(str(callback.message.chat.id))
                 bot.send_message(
                     chat_id=callback.message.chat.id,
-                    text=f'За все время вы занимались {sec_to_hours(total_time)}'
+                    text=f'За все время вы занимались {sec_to_hours_conv(total_time)}'
                 )
         except TypeError:
             bot.send_message(
@@ -196,6 +235,7 @@ def callback_inline(callback):
             )
             answers.print_error()
 
+        """ Обработка нажатий основных кнопок """
         if callback.data == 'begin':
             db.insert('start_end_table', chat_id=str(callback.message.chat.id), start_time=str(int(time.time())))
 
@@ -205,7 +245,7 @@ def callback_inline(callback):
             bot.delete_message(callback.message.chat.id, last_message.id)
             bot.send_message(
                 chat_id=callback.message.chat.id,
-                text=f'Учеба начата в {date_translation(int(time.time()))}',
+                text=f'Учеба начата в {unix_to_date_conv(int(time.time()))}',
             )
             last_message = bot.send_message(
                 chat_id=callback.message.chat.id,
@@ -218,7 +258,7 @@ def callback_inline(callback):
             bot.delete_message(callback.message.chat.id, last_message.id)
             bot.send_message(
                 chat_id=callback.message.chat.id,
-                text=f'Учеба приостановлена в {date_translation(int(time.time()))}',
+                text=f'Учеба приостановлена в {unix_to_date_conv(int(time.time()))}',
             )
             last_message = bot.send_message(
                 chat_id=callback.message.chat.id,
@@ -231,7 +271,7 @@ def callback_inline(callback):
             bot.delete_message(callback.message.chat.id, last_message.id)
             bot.send_message(
                 chat_id=callback.message.chat.id,
-                text=f'Учеба возобновлена в {date_translation(int(time.time()))}',
+                text=f'Учеба возобновлена в {unix_to_date_conv(int(time.time()))}',
             )
             last_message = bot.send_message(
                 chat_id=callback.message.chat.id,
@@ -251,8 +291,8 @@ def callback_inline(callback):
             bot.delete_message(callback.message.chat.id, last_message.id)
             bot.send_message(
                 chat_id=callback.message.chat.id,
-                text=f'Учеба закончена в {date_translation(int(time.time()))}\n'
-                     f'Время учебы {sec_to_hours(total_work_time)}',
+                text=f'Учеба закончена в {unix_to_date_conv(int(time.time()))}\n'
+                     f'Время учебы {sec_to_hours_conv(total_work_time)}',
             )
     except:
         bot.send_message(

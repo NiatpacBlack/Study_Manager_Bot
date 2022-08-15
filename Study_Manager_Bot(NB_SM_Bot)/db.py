@@ -3,10 +3,11 @@ from datetime import datetime
 
 
 def create_all_table():
+    """ Cоздает все рабочие таблицы, если те еще не созданы или были удалены внезапно """
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
 
-    # создает все рабочие таблицы, если те еще не созданы или были удалены внезапно
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS start_end_table(
         session_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,8 +47,9 @@ def create_all_table():
     study_time_db.commit()
 
 
-# добавление данных в таблицу
 def insert(table: str, **kwargs):
+    """ Добавление данных в таблицу """
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
     columns = ", ".join(kwargs.keys())
@@ -61,16 +63,19 @@ def insert(table: str, **kwargs):
     study_time_db.commit()
 
 
-# удаление таблицы
 def delete_table(table: str):
+    """ Удаление всех данных таблицы """
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
+
     cursor.execute(f'DELETE FROM {table}')
     study_time_db.commit()
 
 
-# отчет об общем времени в текущем дне
 def report_today(chat_id: str):
+    """ Отчет об общем времени в текущем дне """
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
 
@@ -87,8 +92,9 @@ def report_today(chat_id: str):
     return int(read_table[0][0])
 
 
-# отчет об общем времени в текущей неделе
 def report_week(chat_id: str):
+    """ Отчет об общем времени в текущей неделе """
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
 
@@ -110,8 +116,9 @@ def report_week(chat_id: str):
     return int(read_table[0][0])
 
 
-# отчет об общем времени в текущем месяце
 def report_month(chat_id: str):
+    """ Отчет об общем времени в текущем месяце """
+
     import calendar
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
@@ -135,8 +142,9 @@ def report_month(chat_id: str):
     return int(read_table[0][0])
 
 
-# отчет об общем времени за все время
 def report_all_time(chat_id: str):
+    """ Отчет об общем времени за все время """
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
     cursor.execute(f'''
@@ -150,6 +158,8 @@ def report_all_time(chat_id: str):
 
 
 def get_session_id(chat_id: int, start_time: int):
+    """ Получение session_id для определенного чата с определенным временем старта """
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
 
@@ -163,6 +173,8 @@ def get_session_id(chat_id: int, start_time: int):
 
 
 def set_unpause_time(unpause_time: int, session_id: int):
+    """ Устанавливает время снятия паузы в таблицу pause_unpause_table, если время снятие паузы Null"""
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
 
@@ -175,6 +187,8 @@ def set_unpause_time(unpause_time: int, session_id: int):
 
 
 def set_end_time(end_time: int, session_id: int):
+    """ Устанавливает время окончания учебы """
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
 
@@ -185,8 +199,9 @@ def set_end_time(end_time: int, session_id: int):
     study_time_db.commit()
 
 
-# вставляет в таблицу union_table объединенные таблицы start_end и pause_unpause, и меняет null на end_time
 def reinsert_union_table():
+    """ Вставляет в таблицу union_table объединенные таблицы start_end и pause_unpause, и меняет null на end_time """
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
     cursor.execute('''
@@ -203,8 +218,9 @@ def reinsert_union_table():
     study_time_db.commit()
 
 
-# получаем количество секунд учебы за все время, для аккаунта к которому относится id сессии
 def get_total_work_time(session_id: int):
+    """ Получаем количество секунд учебы за все время, для аккаунта к которому относится id сессии """
+
     study_time_db = sqlite3.connect('study_time.db')
     cursor = study_time_db.cursor()
 
