@@ -1,16 +1,14 @@
 import config
 import db
 import answers
-import telebot
-import flask
-import time
 
-from telebot import types
-from flask import Flask, request, Response
+from time import time
+from telebot import types, TeleBot
+from flask import Flask, abort, request, Response
 from datetime import datetime
 
 app = Flask(__name__)
-bot = telebot.TeleBot(config.token)
+bot = TeleBot(config.token)
 
 """ В эту переменную будет заноситься номер текущей session_id из базы данных """
 id_session = 0
@@ -105,11 +103,11 @@ def index():
     """ Обработка полученных веб-хуков """
 
     if request.headers.get('content-type') == 'application/json':
-        update = telebot.types.Update.de_json(request.stream.read().decode('utf-8'))
+        update = types.Update.de_json(request.stream.read().decode('utf-8'))
         bot.process_new_updates([update])
         return ''
     else:
-        flask.abort(403)
+        abort(403)
     if request.method == 'POST':
         return Response('ok', status=200)
     else:
@@ -246,15 +244,15 @@ def callback_inline(callback):
 
         """ Обработка нажатий основных кнопок """
         if callback.data == 'begin':
-            db.insert('start_end_table', chat_id=str(callback.message.chat.id), start_time=str(int(time.time())))
+            db.insert('start_end_table', chat_id=str(callback.message.chat.id), start_time=str(int(time())))
 
-            id_session = db.get_session_id(callback.message.chat.id, int(time.time()))
+            id_session = db.get_session_id(callback.message.chat.id, int(time()))
             print(f' Id сессии равен: {id_session}')
 
             bot.delete_message(callback.message.chat.id, last_message.id)
             bot.send_message(
                 chat_id=callback.message.chat.id,
-                text=f'Учеба начата в {unix_to_date_conv(int(time.time()))}',
+                text=f'Учеба начата в {unix_to_date_conv(int(time()))}',
             )
             last_message = bot.send_message(
                 chat_id=callback.message.chat.id,
@@ -262,12 +260,12 @@ def callback_inline(callback):
                 reply_markup=create_mid_keyboard()
             )
         if callback.data == 'pause':
-            db.insert('pause_unpause_table', session_id=str(id_session), pause_time=str(int(time.time())))
+            db.insert('pause_unpause_table', session_id=str(id_session), pause_time=str(int(time())))
 
             bot.delete_message(callback.message.chat.id, last_message.id)
             bot.send_message(
                 chat_id=callback.message.chat.id,
-                text=f'Учеба приостановлена в {unix_to_date_conv(int(time.time()))}',
+                text=f'Учеба приостановлена в {unix_to_date_conv(int(time()))}',
             )
             last_message = bot.send_message(
                 chat_id=callback.message.chat.id,
@@ -275,12 +273,12 @@ def callback_inline(callback):
                 reply_markup=create_pause_keyboard()
             )
         if callback.data == 'unpause':
-            db.set_unpause_time(int(time.time()), id_session)
+            db.set_unpause_time(int(time()), id_session)
 
             bot.delete_message(callback.message.chat.id, last_message.id)
             bot.send_message(
                 chat_id=callback.message.chat.id,
-                text=f'Учеба возобновлена в {unix_to_date_conv(int(time.time()))}',
+                text=f'Учеба возобновлена в {unix_to_date_conv(int(time()))}',
             )
             last_message = bot.send_message(
                 chat_id=callback.message.chat.id,
@@ -288,7 +286,7 @@ def callback_inline(callback):
                 reply_markup=create_mid_keyboard()
             )
         if callback.data == 'end':
-            db.set_end_time(int(time.time()), id_session)
+            db.set_end_time(int(time()), id_session)
             db.delete_table('union_table')
             db.reinsert_union_table()
             total_work_time = db.get_total_work_time(id_session)
@@ -300,7 +298,7 @@ def callback_inline(callback):
             bot.delete_message(callback.message.chat.id, last_message.id)
             bot.send_message(
                 chat_id=callback.message.chat.id,
-                text=f'Учеба закончена в {unix_to_date_conv(int(time.time()))}\n'
+                text=f'Учеба закончена в {unix_to_date_conv(int(time()))}\n'
                      f'Время учебы {sec_to_hours_conv(total_work_time)}',
             )
     except:
