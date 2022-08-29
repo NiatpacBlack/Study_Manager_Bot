@@ -140,10 +140,12 @@ def add_time_bot(message):
             end_time_unix = date_to_unix_conv(' '.join(list_message_words[5:]))
 
             """ Добавление времени начала и конца учебы в таблицу """
-            db.insert('start_end_table',
-                      chat_id=str(message.chat.id),
-                      start_time=str(start_time_unix),
-                      end_time=str(end_time_unix))
+            db.insert(
+                'start_end_table',
+                chat_id=str(message.chat.id),
+                start_time=str(start_time_unix),
+                end_time=str(end_time_unix)
+            )
 
             """ Перезагрузка таблицы union_table, для вычисления общего времени """
             session_id = db.get_session_id(message.chat.id, start_time_unix)
@@ -152,10 +154,12 @@ def add_time_bot(message):
             total_work_time = db.get_total_work_time(session_id)
 
             """ Добавление общего времени учебы в таблицу """
-            db.insert('total_time_table',
-                      session_id=str(session_id),
-                      chat_id=str(message.chat.id),
-                      total_work_time=str(total_work_time))
+            db.insert(
+                'total_time_table',
+                session_id=str(session_id),
+                chat_id=str(message.chat.id),
+                total_work_time=str(total_work_time)
+            )
 
             """ Ответ пользователю об успехе """
             bot.send_message(
@@ -260,7 +264,11 @@ def callback_inline(callback):
                 reply_markup=create_mid_keyboard()
             )
         if callback.data == 'pause':
-            db.insert('pause_unpause_table', session_id=str(id_session), pause_time=str(int(time())))
+            db.insert(
+                'pause_unpause_table',
+                session_id=str(id_session),
+                pause_time=str(int(time()))
+            )
 
             bot.delete_message(callback.message.chat.id, last_message.id)
             bot.send_message(
