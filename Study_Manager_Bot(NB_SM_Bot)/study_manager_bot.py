@@ -6,6 +6,16 @@ from time import time
 from telebot import types, TeleBot
 from flask import Flask, abort, request, Response
 from datetime import datetime
+from loguru import logger
+
+''' Настройки файла логов'''
+logger.add(
+    "log/sm_bot_debug.log",
+    format="{time} {level} {message}",
+    level="DEBUG",
+    rotation="1 day",
+    compression="zip"
+)
 
 app = Flask(__name__)
 bot = TeleBot(config.token)
@@ -168,12 +178,12 @@ def add_time_bot(message):
                 parse_mode='HTML'
             )
     except ValueError:
+        logger.exception("Ошибка в написании команды")
         bot.send_message(
             message.chat.id,
             answers.add_time_answer(),
             parse_mode='HTML'
         )
-        answers.print_error()
 
 
 @bot.message_handler(commands=['help'])
@@ -239,19 +249,19 @@ def callback_inline(callback):
                     text=f'За прошлую неделю вы занимались {sec_to_hours_conv(total_time_last_week)}'
                 )
         except TypeError:
+            logger.exception("Отсутствие данных")
             bot.send_message(
                 chat_id=callback.message.chat.id,
                 text=answers.report_error(),
                 parse_mode='HTML'
             )
-            answers.print_error()
 
         """ Обработка нажатий основных кнопок """
         if callback.data == 'begin':
             db.insert('start_end_table', chat_id=str(callback.message.chat.id), start_time=str(int(time())))
 
             id_session = db.get_session_id(callback.message.chat.id, int(time()))
-            print(f' Id сессии равен: {id_session}')
+            # print(f' Id сессии равен: {id_session}')
 
             bot.delete_message(callback.message.chat.id, last_message.id)
             bot.send_message(
@@ -309,13 +319,13 @@ def callback_inline(callback):
                 text=f'Учеба закончена в {unix_to_date_conv(int(time()))}\n'
                      f'Время учебы {sec_to_hours_conv(total_work_time)}',
             )
-    except:
+    except Exception:
+        logger.exception("Произошла непредвиденная ошибка")
         bot.send_message(
             chat_id=callback.message.chat.id,
             text=answers.callback_error(),
             parse_mode='HTML'
         )
-        answers.print_error()
 
 
 if __name__ == '__main__':
